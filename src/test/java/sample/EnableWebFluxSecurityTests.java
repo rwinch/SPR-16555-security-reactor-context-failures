@@ -76,31 +76,6 @@ public class EnableWebFluxSecurityTests {
 	}
 
 	@Test
-	public void defaultPopulatesReactorContext() {
-		Authentication currentPrincipal = new TestingAuthenticationToken("user", "password", "ROLE_USER");
-		WebSessionServerSecurityContextRepository contextRepository = new WebSessionServerSecurityContextRepository();
-		SecurityContext context = new SecurityContextImpl(currentPrincipal);
-		WebTestClient client = WebTestClientBuilder.bindToWebFilters(
-			(exchange, chain) -> contextRepository.save(exchange, context)
-				.switchIfEmpty(chain.filter(exchange))
-				.flatMap(e -> chain.filter(exchange)),
-			this.springSecurityFilterChain,
-			(exchange, chain) ->
-				ReactiveSecurityContextHolder.getContext()
-					.map(SecurityContext::getAuthentication)
-					.flatMap( principal -> exchange.getResponse()
-						.writeWith(Mono.just(toDataBuffer(principal.getName()))))
-		).build();
-
-		client
-			.get()
-			.uri("/")
-			.exchange()
-			.expectStatus().isOk()
-			.expectBody(String.class).consumeWith( result -> assertThat(result.getResponseBody()).isEqualTo(currentPrincipal.getName()));
-	}
-
-	@Test
 	public void defaultPopulatesReactorContextWhenAuthenticating() {
 		WebTestClient client = WebTestClientBuilder.bindToWebFilters(
 			this.springSecurityFilterChain,
