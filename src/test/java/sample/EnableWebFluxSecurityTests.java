@@ -76,23 +76,6 @@ public class EnableWebFluxSecurityTests {
 	}
 
 	@Test
-	public void authenticateWhenBasicThenNoSession() {
-
-		WebTestClient client = WebTestClientBuilder
-			.bindToWebFilters(this.springSecurityFilterChain)
-			.filter(basicAuthentication())
-			.build();
-
-		FluxExchangeResult<String> result = client.get()
-			.attributes(basicAuthenticationCredentials("user", "password"))
-			.exchange()
-			.expectStatus()
-			.isOk()
-			.returnResult(String.class);
-		result.assertWithDiagnostics(() -> assertThat(result.getResponseCookies().isEmpty()));
-	}
-
-	@Test
 	public void defaultPopulatesReactorContext() {
 		Authentication currentPrincipal = new TestingAuthenticationToken("user", "password", "ROLE_USER");
 		WebSessionServerSecurityContextRepository contextRepository = new WebSessionServerSecurityContextRepository();
