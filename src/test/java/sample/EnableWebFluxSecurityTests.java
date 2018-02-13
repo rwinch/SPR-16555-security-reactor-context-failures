@@ -153,12 +153,6 @@ public class EnableWebFluxSecurityTests {
 			.expectBody(String.class).consumeWith( result -> assertThat(result.getResponseBody()).isEqualTo("user"));
 	}
 
-	@Test
-	public void requestDataValueProcessor() {
-		CsrfRequestDataValueProcessor rdvp = context.getBean(AbstractView.REQUEST_DATA_VALUE_PROCESSOR_BEAN_NAME, CsrfRequestDataValueProcessor.class);
-		assertThat(rdvp).isNotNull();
-	}
-
 	@EnableWebFluxSecurity
 	@Import(ReactiveAuthenticationTestConfiguration.class)
 	static class Config {
