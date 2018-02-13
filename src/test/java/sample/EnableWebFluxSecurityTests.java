@@ -59,20 +59,6 @@ public class EnableWebFluxSecurityTests {
 	@Autowired
 	ConfigurableApplicationContext context;
 
-	@Test
-	public void defaultRequiresAuthentication() {
-
-		WebTestClient client = WebTestClientBuilder
-			.bindToWebFilters(this.springSecurityFilterChain)
-			.build();
-
-		client.get()
-			.uri("/")
-			.exchange()
-			.expectStatus().isUnauthorized()
-			.expectBody().isEmpty();
-	}
-
 	// gh-4831
 	@Test
 	public void defaultMediaAllThenUnAuthorized() {
