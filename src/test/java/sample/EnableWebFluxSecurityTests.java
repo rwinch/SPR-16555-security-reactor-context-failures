@@ -170,11 +170,10 @@ public class EnableWebFluxSecurityTests {
 		 */
 		private SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
 			http
-					.authorizeExchange()
+				.authorizeExchange()
 					.anyExchange().authenticated()
 					.and()
-					.httpBasic().and()
-					.formLogin();
+				.httpBasic();
 			return http.build();
 		}
 
