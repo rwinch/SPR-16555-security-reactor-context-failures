@@ -34,6 +34,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
+import org.springframework.security.authorization.AuthenticatedReactiveAuthorizationManager;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.Authentication;
@@ -44,13 +45,17 @@ import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.reactive.result.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.security.web.reactive.result.view.CsrfRequestDataValueProcessor;
+import org.springframework.security.web.server.MatcherSecurityWebFilterChain;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.ServerHttpBasicAuthenticationConverter;
 import org.springframework.security.web.server.WebFilterChainProxy;
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
 import org.springframework.security.web.server.authentication.HttpBasicServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler;
+import org.springframework.security.web.server.authorization.AuthorizationWebFilter;
+import org.springframework.security.web.server.authorization.ExceptionTranslationWebFilter;
 import org.springframework.security.web.server.context.WebSessionServerSecurityContextRepository;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.FluxExchangeResult;
@@ -68,6 +73,7 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.MatchResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.config.web.server.ServerHttpSecurity.http;
@@ -123,21 +129,25 @@ public class EnableWebFluxSecurityTests {
 			.expectBody(String.class).consumeWith( result -> assertThat(result.getResponseBody()).isEqualTo("user"));
 	}
 
-	public WebFilter springSecurityWebFilterChainFilter() {
-		ServerHttpSecurity http = httpSecurity();
-		http
-			.authorizeExchange()
-				.anyExchange().authenticated()
-				.and()
-			.httpBasic();
-		return new WebFilterChainProxy(http.build());
+	public WebFilter authenticationFilter() {
+		AuthenticationWebFilter authenticationFilter = new AuthenticationWebFilter(authenticationManager());
+		authenticationFilter.setAuthenticationFailureHandler(new ServerAuthenticationEntryPointFailureHandler(new HttpBasicServerAuthenticationEntryPoint()));
+		authenticationFilter.setAuthenticationConverter(new ServerHttpBasicAuthenticationConverter());
+		return authenticationFilter;
 	}
 
-	public ServerHttpSecurity httpSecurity() {
-		return http()
-				.authenticationManager(authenticationManager())
-				.headers().and()
-				.logout().and();
+	private WebFilter exceptionTranslation() {
+		return new ExceptionTranslationWebFilter();
+	}
+
+	private WebFilter authorizationFilter() {
+		return new AuthorizationWebFilter(AuthenticatedReactiveAuthorizationManager.authenticated());
+	}
+
+	public WebFilter springSecurityWebFilterChainFilter() {
+		MatcherSecurityWebFilterChain chain = new MatcherSecurityWebFilterChain(e -> ServerWebExchangeMatcher.MatchResult.match(),
+				Arrays.asList(authenticationFilter(), exceptionTranslation(), authorizationFilter()));
+		return new WebFilterChainProxy(chain);
 	}
 
 	private ReactiveAuthenticationManager authenticationManager() {
