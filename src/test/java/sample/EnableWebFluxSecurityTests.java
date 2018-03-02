@@ -23,6 +23,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -37,6 +38,9 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.FluxExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.result.view.AbstractView;
 import reactor.core.publisher.Mono;
 
@@ -63,8 +67,9 @@ public class EnableWebFluxSecurityTests {
 	@Test
 	public void defaultMediaAllThenUnAuthorized() {
 
-		WebTestClient client = WebTestClientBuilder
-			.bindToWebFilters(this.springSecurityFilterChain)
+		WebTestClient client = WebTestClient
+			.bindToController(new Http200RestController())
+			.webFilter(this.springSecurityFilterChain)
 			.build();
 
 		client.get()
@@ -77,14 +82,16 @@ public class EnableWebFluxSecurityTests {
 
 	@Test
 	public void defaultPopulatesReactorContextWhenAuthenticating() {
-		WebTestClient client = WebTestClientBuilder.bindToWebFilters(
-			this.springSecurityFilterChain,
+		WebTestClient client = WebTestClient
+				.bindToController(new Http200RestController())
+				.webFilter(this.springSecurityFilterChain,
 			(exchange, chain) ->
 				ReactiveSecurityContextHolder.getContext()
 					.map(SecurityContext::getAuthentication)
 					.flatMap( principal -> exchange.getResponse()
 						.writeWith(Mono.just(toDataBuffer(principal.getName()))))
 		)
+		.configureClient()
 		.filter(basicAuthentication())
 		.build();
 
@@ -106,5 +113,14 @@ public class EnableWebFluxSecurityTests {
 		DataBuffer buffer = new DefaultDataBufferFactory().allocateBuffer();
 		buffer.write(body.getBytes(StandardCharsets.UTF_8));
 		return buffer;
+	}
+
+	@RestController
+	public static class Http200RestController {
+		@RequestMapping("/**")
+		@ResponseStatus(HttpStatus.OK)
+		public String ok() {
+			return "ok";
+		}
 	}
 }
