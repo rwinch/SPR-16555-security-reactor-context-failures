@@ -78,14 +78,9 @@ import static org.springframework.web.reactive.function.client.ExchangeFilterFun
  * @author Rob Winch
  * @since 5.0
  */
-@RunWith(SpringRunner.class)
-@ContextConfiguration
 public class EnableWebFluxSecurityTests {
 
-	@Autowired
-	WebFilter springSecurityFilterChain;
-	@Autowired
-	ConfigurableApplicationContext context;
+	WebFilter springSecurityFilterChain = springSecurityWebFilterChainFilter();
 
 	// gh-4831
 	@Test
@@ -100,8 +95,8 @@ public class EnableWebFluxSecurityTests {
 			.uri("/")
 			.accept(MediaType.ALL)
 			.exchange()
-			.expectStatus().isOk()
-			.expectBody(String.class).isEqualTo("ok");
+			.expectStatus().isUnauthorized()
+			.expectBody().isEmpty();
 	}
 
 	@Test
@@ -128,114 +123,27 @@ public class EnableWebFluxSecurityTests {
 			.expectBody(String.class).consumeWith( result -> assertThat(result.getResponseBody()).isEqualTo("user"));
 	}
 
-	@Configuration
-	@Import(ReactiveAuthenticationTestConfiguration.class)
-	static class Config implements WebFluxConfigurer {
+	public WebFilter springSecurityWebFilterChainFilter() {
+		ServerHttpSecurity http = httpSecurity();
+		http
+			.authorizeExchange()
+				.anyExchange().authenticated()
+				.and()
+			.httpBasic();
+		return new WebFilterChainProxy(http.build());
+	}
 
-		public static final int WEB_FILTER_CHAIN_FILTER_ORDER = 0 - 100;
+	public ServerHttpSecurity httpSecurity() {
+		return http()
+				.authenticationManager(authenticationManager())
+				.headers().and()
+				.logout().and();
+	}
 
-		private static final String BEAN_NAME_PREFIX = "org.springframework.security.config.annotation.web.reactive.WebFluxSecurityConfiguration.";
-
-		private static final String SPRING_SECURITY_WEBFILTERCHAINFILTER_BEAN_NAME = BEAN_NAME_PREFIX + "WebFilterChainFilter";
-
-		@Autowired(required = false)
-		private List<SecurityWebFilterChain> securityWebFilterChains;
-
-		@Autowired
-		ApplicationContext context;
-
-		@Bean(SPRING_SECURITY_WEBFILTERCHAINFILTER_BEAN_NAME)
-		@Order(value = WEB_FILTER_CHAIN_FILTER_ORDER)
-		public WebFilter springSecurityWebFilterChainFilter() {
-			AuthenticationWebFilter authenticationFilter = new AuthenticationWebFilter(
-					authenticationManager());
-			authenticationFilter.setAuthenticationFailureHandler(new ServerAuthenticationEntryPointFailureHandler(new HttpBasicServerAuthenticationEntryPoint()));
-			authenticationFilter.setAuthenticationConverter(new ServerHttpBasicAuthenticationConverter());
-			return authenticationFilter;
-		}
-
-		@Bean(name = AbstractView.REQUEST_DATA_VALUE_PROCESSOR_BEAN_NAME)
-		public CsrfRequestDataValueProcessor requestDataValueProcessor() {
-			return new CsrfRequestDataValueProcessor();
-		}
-
-		private List<SecurityWebFilterChain> getSecurityWebFilterChains() {
-			List<SecurityWebFilterChain> result = this.securityWebFilterChains;
-			if(ObjectUtils.isEmpty(result)) {
-				return Arrays.asList(springSecurityFilterChain());
-			}
-			return result;
-		}
-
-		private SecurityWebFilterChain springSecurityFilterChain() {
-			ServerHttpSecurity http = this.context.getBean(ServerHttpSecurity.class);
-			return springSecurityFilterChain(http);
-		}
-
-		/**
-		 * The default {@link ServerHttpSecurity} configuration.
-		 * @param http
-		 * @return
-		 */
-		private SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
-			http
-				.authorizeExchange()
-					.anyExchange().authenticated()
-					.and()
-				.httpBasic();
-			return http.build();
-		}
-
-		// --------------------
-
-		private static final String CONFIG_BEAN_NAME_PREFIX = "org.springframework.security.config.annotation.web.reactive.HttpSecurityConfiguration.";
-		private static final String HTTPSECURITY_BEAN_NAME = CONFIG_BEAN_NAME_PREFIX + "httpSecurity";
-
-		@Autowired(required = false)
-		private ReactiveAdapterRegistry adapterRegistry = new ReactiveAdapterRegistry();
-
-		@Autowired(required = false)
-		private ReactiveAuthenticationManager authenticationManager;
-
-		@Autowired(required = false)
-		private ReactiveUserDetailsService reactiveUserDetailsService;
-
-		@Autowired(required = false)
-		private PasswordEncoder passwordEncoder;
-
-		@Override
-		public void configureArgumentResolvers(ArgumentResolverConfigurer configurer) {
-			configurer.addCustomResolver(authenticationPrincipalArgumentResolver());
-		}
-
-		@Bean
-		public AuthenticationPrincipalArgumentResolver authenticationPrincipalArgumentResolver() {
-			return new AuthenticationPrincipalArgumentResolver(this.adapterRegistry);
-		}
-
-		@Bean(HTTPSECURITY_BEAN_NAME)
-		@Scope("prototype")
-		public ServerHttpSecurity httpSecurity() {
-			return http()
-					.authenticationManager(authenticationManager())
-					.headers().and()
-					.logout().and();
-		}
-
-		private ReactiveAuthenticationManager authenticationManager() {
-			if(this.authenticationManager != null) {
-				return this.authenticationManager;
-			}
-			if(this.reactiveUserDetailsService != null) {
-				UserDetailsRepositoryReactiveAuthenticationManager manager =
-						new UserDetailsRepositoryReactiveAuthenticationManager(this.reactiveUserDetailsService);
-				if(this.passwordEncoder != null) {
-					manager.setPasswordEncoder(this.passwordEncoder);
-				}
-				return manager;
-			}
-			return null;
-		}
+	private ReactiveAuthenticationManager authenticationManager() {
+		ReactiveUserDetailsService userDetailsService = ReactiveAuthenticationTestConfiguration
+				.userDetailsService();
+		return new UserDetailsRepositoryReactiveAuthenticationManager(userDetailsService);
 	}
 
 	private static DataBuffer toDataBuffer(String body) {
