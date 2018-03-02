@@ -45,7 +45,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.reactive.result.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.security.web.reactive.result.view.CsrfRequestDataValueProcessor;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.ServerHttpBasicAuthenticationConverter;
 import org.springframework.security.web.server.WebFilterChainProxy;
+import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
+import org.springframework.security.web.server.authentication.HttpBasicServerAuthenticationEntryPoint;
+import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler;
 import org.springframework.security.web.server.context.WebSessionServerSecurityContextRepository;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -58,6 +62,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
 import org.springframework.web.reactive.result.view.AbstractView;
+import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
@@ -78,7 +83,7 @@ import static org.springframework.web.reactive.function.client.ExchangeFilterFun
 public class EnableWebFluxSecurityTests {
 
 	@Autowired
-	WebFilterChainProxy springSecurityFilterChain;
+	WebFilter springSecurityFilterChain;
 	@Autowired
 	ConfigurableApplicationContext context;
 
@@ -95,8 +100,8 @@ public class EnableWebFluxSecurityTests {
 			.uri("/")
 			.accept(MediaType.ALL)
 			.exchange()
-			.expectStatus().isUnauthorized()
-			.expectBody().isEmpty();
+			.expectStatus().isOk()
+			.expectBody(String.class).isEqualTo("ok");
 	}
 
 	@Test
@@ -141,8 +146,12 @@ public class EnableWebFluxSecurityTests {
 
 		@Bean(SPRING_SECURITY_WEBFILTERCHAINFILTER_BEAN_NAME)
 		@Order(value = WEB_FILTER_CHAIN_FILTER_ORDER)
-		public WebFilterChainProxy springSecurityWebFilterChainFilter() {
-			return new WebFilterChainProxy(getSecurityWebFilterChains());
+		public WebFilter springSecurityWebFilterChainFilter() {
+			AuthenticationWebFilter authenticationFilter = new AuthenticationWebFilter(
+					authenticationManager());
+			authenticationFilter.setAuthenticationFailureHandler(new ServerAuthenticationEntryPointFailureHandler(new HttpBasicServerAuthenticationEntryPoint()));
+			authenticationFilter.setAuthenticationConverter(new ServerHttpBasicAuthenticationConverter());
+			return authenticationFilter;
 		}
 
 		@Bean(name = AbstractView.REQUEST_DATA_VALUE_PROCESSOR_BEAN_NAME)
