@@ -89,7 +89,7 @@ public class EnableWebFluxSecurityTests {
 	WebFilter springSecurityFilterChain = springSecurityWebFilterChainFilter();
 
 	// gh-4831
-//	@Test
+	@Test
 	public void defaultMediaAllThenUnAuthorized() {
 
 		WebTestClient client = WebTestClient
