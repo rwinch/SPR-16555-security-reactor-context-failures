@@ -144,8 +144,7 @@ public class EnableWebFluxSecurityTests {
 	}
 
 	public WebFilter authenticationFilter() {
-		AuthenticationWebFilter authenticationFilter = new AuthenticationWebFilter(authenticationManager());
-		authenticationFilter.setAuthenticationFailureHandler(new ServerAuthenticationEntryPointFailureHandler(new HttpBasicServerAuthenticationEntryPoint()));
+		SimpleAuthenticationWebFilter authenticationFilter = new SimpleAuthenticationWebFilter(authenticationManager());
 		authenticationFilter.setAuthenticationConverter(new ServerHttpBasicAuthenticationConverter());
 		return authenticationFilter;
 	}
