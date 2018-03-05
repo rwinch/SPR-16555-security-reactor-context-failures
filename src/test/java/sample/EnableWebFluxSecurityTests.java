@@ -154,11 +154,10 @@ public class EnableWebFluxSecurityTests {
 	}
 
 	private ReactiveAuthenticationManager authenticationManager() {
-		ReactiveUserDetailsService userDetailsService = new MapReactiveUserDetailsService(User.withUsername("user").password("password").roles("USER").build());
-		UserDetailsRepositoryReactiveAuthenticationManager result = new UserDetailsRepositoryReactiveAuthenticationManager(
-				userDetailsService);
-		result.setPasswordEncoder(NoOpPasswordEncoder.getInstance());
-		return result;
+		return t -> Mono.just(t)
+				.publishOn(Schedulers.parallel())
+				.map( a -> new UsernamePasswordAuthenticationToken(a.getPrincipal(), a.getCredentials(),
+						AuthorityUtils.createAuthorityList("ROLE_USER")));
 	}
 
 	private static DataBuffer toDataBuffer(String body) {
