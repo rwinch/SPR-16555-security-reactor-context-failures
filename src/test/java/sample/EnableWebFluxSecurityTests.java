@@ -18,6 +18,8 @@ package sample;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -34,10 +36,12 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authorization.AuthenticatedReactiveAuthorizationManager;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextImpl;
@@ -71,7 +75,10 @@ import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
 import org.springframework.web.reactive.result.view.AbstractView;
 import org.springframework.web.server.WebFilter;
+import reactor.core.Scannable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -110,11 +117,15 @@ public class EnableWebFluxSecurityTests {
 
 	@Test
 	public void defaultPopulatesReactorContextWhenAuthenticating() {
+		Logger logger = LoggerFactory.getLogger(getClass());
 		WebTestClient client = WebTestClient
 				.bindToController(new Http200RestController())
 				.webFilter(this.springSecurityFilterChain,
 			(exchange, chain) ->
-				ReactiveSecurityContextHolder.getContext()
+				Flux.from(sub -> {
+					Scannable.from(sub).actuals().map(Scannable::toString).forEach(logger::info);
+					sub.onComplete();
+				}).then(ReactiveSecurityContextHolder.getContext())
 					.map(SecurityContext::getAuthentication)
 					.flatMap( principal -> exchange.getResponse()
 						.writeWith(Mono.just(toDataBuffer(principal.getName()))))
