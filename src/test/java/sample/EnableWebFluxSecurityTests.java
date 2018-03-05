@@ -41,7 +41,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.reactive.result.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.security.web.reactive.result.view.CsrfRequestDataValueProcessor;
@@ -151,9 +154,11 @@ public class EnableWebFluxSecurityTests {
 	}
 
 	private ReactiveAuthenticationManager authenticationManager() {
-		ReactiveUserDetailsService userDetailsService = ReactiveAuthenticationTestConfiguration
-				.userDetailsService();
-		return new UserDetailsRepositoryReactiveAuthenticationManager(userDetailsService);
+		ReactiveUserDetailsService userDetailsService = new MapReactiveUserDetailsService(User.withUsername("user").password("password").roles("USER").build());
+		UserDetailsRepositoryReactiveAuthenticationManager result = new UserDetailsRepositoryReactiveAuthenticationManager(
+				userDetailsService);
+		result.setPasswordEncoder(NoOpPasswordEncoder.getInstance());
+		return result;
 	}
 
 	private static DataBuffer toDataBuffer(String body) {
