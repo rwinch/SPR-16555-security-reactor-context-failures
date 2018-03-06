@@ -32,11 +32,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.WebFilter;
+import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import static jdk.nashorn.internal.runtime.regexp.joni.Config.log;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.web.reactive.function.client.ExchangeFilterFunctions.Credentials.basicAuthenticationCredentials;
 import static org.springframework.web.reactive.function.client.ExchangeFilterFunctions.basicAuthentication;
@@ -69,6 +71,9 @@ public class EnableWebFluxSecurityTests {
 	@Test
 	public void defaultPopulatesReactorContextWhenAuthenticating() {
 		Logger logger = LoggerFactory.getLogger(getClass());
+		Hooks.onNextDropped( e -> {
+			logger.error("", new Exception());
+		});
 		WebTestClient client = WebTestClient
 				.bindToController(new Http200RestController())
 				.webFilter(
