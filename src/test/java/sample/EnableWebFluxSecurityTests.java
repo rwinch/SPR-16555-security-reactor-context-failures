@@ -24,6 +24,7 @@ import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authorization.AuthenticatedReactiveAuthorizationManager;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.web.server.MatcherSecurityWebFilterChain;
@@ -87,8 +88,12 @@ public class EnableWebFluxSecurityTests {
 				})
 				.then(ReactiveSecurityContextHolder.getContext())
 					.map(SecurityContext::getAuthentication)
-					.flatMap( principal -> exchange.getResponse()
-						.writeWith(Mono.just(toDataBuffer(principal.getName()))))
+					.map(Authentication::getName)
+					.flatMap( username -> {
+						System.out.println("!!!!!!!!!!!! principal " + username + "!!!!!!!!!!!!!!!!!!!");
+						Mono<DataBuffer> name = Mono.just(toDataBuffer(username));
+						return exchange.getResponse().writeWith(name);
+					})
 		)
 		.configureClient()
 		.filter(basicAuthentication())
