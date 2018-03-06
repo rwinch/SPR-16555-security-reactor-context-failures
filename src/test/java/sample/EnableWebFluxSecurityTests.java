@@ -81,21 +81,12 @@ public class EnableWebFluxSecurityTests {
 				.bindToController(new Http200RestController())
 				.webFilter(
 			this.springSecurityFilterChain,
-			(exchange, chain) ->
-				Flux.from(sub -> {
-					Scannable.from(sub).actuals().map(Scannable::name).forEach(logger::info);
-					sub.onComplete();
-				})
-				.then(ReactiveSecurityContextHolder.getContext())
-					.map(SecurityContext::getAuthentication)
-					.map(Authentication::getName)
-					.flatMap( username -> {
-						System.out.println("!!!!!!!!!!!! principal " + username + "!!!!!!!!!!!!!!!!!!!");
-						DataBuffer buffer = exchange.getResponse().bufferFactory().allocateBuffer();
-						Mono<DataBuffer> name = Mono.just(toDataBuffer(
-								buffer, username));
-						return exchange.getResponse().writeWith(name);
-					})
+			(exchange, chain) -> {
+				System.out.println("WRITING user!!!!!!!!!!!!!!!!!");
+				DataBuffer buffer = exchange.getResponse().bufferFactory().allocateBuffer();
+				Mono<DataBuffer> name = Mono.just(toDataBuffer(buffer, "user"));
+				return exchange.getResponse().writeWith(name);
+			}
 		)
 		.configureClient()
 		.filter(basicAuthentication())
