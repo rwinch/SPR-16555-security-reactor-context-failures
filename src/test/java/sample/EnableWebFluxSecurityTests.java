@@ -91,7 +91,9 @@ public class EnableWebFluxSecurityTests {
 					.map(Authentication::getName)
 					.flatMap( username -> {
 						System.out.println("!!!!!!!!!!!! principal " + username + "!!!!!!!!!!!!!!!!!!!");
-						Mono<DataBuffer> name = Mono.just(toDataBuffer(username));
+						DataBuffer buffer = exchange.getResponse().bufferFactory().allocateBuffer();
+						Mono<DataBuffer> name = Mono.just(toDataBuffer(
+								buffer, username));
 						return exchange.getResponse().writeWith(name);
 					})
 		)
@@ -126,8 +128,7 @@ public class EnableWebFluxSecurityTests {
 		return new WebFilterChainProxy(chain);
 	}
 
-	private static DataBuffer toDataBuffer(String body) {
-		DataBuffer buffer = new DefaultDataBufferFactory().allocateBuffer();
+	private static DataBuffer toDataBuffer(DataBuffer buffer, String body) {
 		buffer.write(body.getBytes(StandardCharsets.UTF_8));
 		return buffer;
 	}
