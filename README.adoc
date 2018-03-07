@@ -4,3 +4,5 @@ Used to reproduce https://jira.spring.io/browse/SPR-16555[SPR-16555]. I run the 
 ----
 time (start=`date`;i=0;while ./mvnw test; do ((i++)); done; spd-say "It failed";end=`date`;echo "It ran $i times and started at $start and ended at $end")
 ----
+
+The issue can be reproduced as fast as a few minutes but can be much longer (often around 4 hours).
